@@ -1,12 +1,14 @@
-// Paseo web client server: serves the static web export (dist/) and gives the
-// browser a way to reach Paseo daemons, which only accept WS upgrades whose
-// Origin header is absent, same-origin, or allowlisted — browsers always send
-// Origin and JS cannot remove it. So for each daemon this process listens on a
-// loopback port and replays the upgrade without Origin, then pipes raw bytes.
+// Paseo web client server: serves the static web export (dist/) and tunnels
+// /ws to the local Paseo daemon. The daemon's WS gate rejects upgrades whose
+// Origin header is absent-from-its-whitelist, and browsers always send Origin,
+// so the upgrade is replayed to the daemon without Origin and raw bytes are
+// piped both ways. Remote daemons are reached directly by the browser after
+// whitelisting this client's origin in each daemon's config (see README).
 //
 //   node serve.mjs            # one command starts everything
 //
-// Ports and daemons live in config.json next to this file. Zero dependencies.
+// Host, port and the local daemon address live in config.json next to this
+// file. Zero dependencies.
 import { createServer } from "node:http";
 import { createConnection } from "node:net";
 import { readFile, stat } from "node:fs/promises";
@@ -105,15 +107,3 @@ ui.on("upgrade", (req, socket) => onUpgrade(config.local, req, socket));
 ui.listen(config.port, config.host, () => {
   console.log(`Paseo web client: http://${config.host}:${config.port}/  (/ws -> ${config.local})`);
 });
-
-// One WS-only forwarder per remote daemon; add hosts in the UI as
-// Direct 127.0.0.1:<listen>.
-for (const remote of config.remotes ?? []) {
-  const fwd = createServer((req, res) => {
-    res.writeHead(426).end("WebSocket upgrade required");
-  });
-  fwd.on("upgrade", (req, socket) => onUpgrade(remote.target, req, socket));
-  fwd.listen(remote.listen, config.host, () => {
-    console.log(`  forward: ws://${config.host}:${remote.listen}/ws -> ${remote.target} (${remote.name})`);
-  });
-}

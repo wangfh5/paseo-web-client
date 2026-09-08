@@ -32,10 +32,10 @@ broke something before.
 
 ## Verifying changes
 
-- `node serve.mjs` must start and print one line per listener.
-- `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:<port>/` → 200.
-- WS handshake per daemon:
-  `node -e 'const ws=new WebSocket("ws://127.0.0.1:<port>/ws");ws.onopen=()=>process.exit(0);ws.onerror=()=>process.exit(1)'`
+- `node serve.mjs` must start and print its listening line.
+- `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:11735/` → 200.
+- Local-daemon tunnel handshake:
+  `node -e 'const ws=new WebSocket("ws://127.0.0.1:11735/ws");ws.onopen=()=>process.exit(0);ws.onerror=()=>process.exit(1)'`
 - After a dist rebuild, open the UI in a real browser (headless Chrome via
   Playwright with `channel: "chrome"` works) and confirm: workspace list
   renders, a session containing LaTeX renders `.katex` elements, and no

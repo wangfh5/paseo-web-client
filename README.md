@@ -16,8 +16,8 @@ node serve.mjs     # that's it — open http://127.0.0.1:11735
 - LaTeX math in agent output: `$...$`, `$$...$$`, and LaTeX-standard
   `\(...\)` / `\[...\]` delimiters, rendered with KaTeX (Computer Modern fonts
   inlined, dark-mode aware).
-- Connects to any number of Paseo daemons (local or remote, e.g. over
-  Tailscale) without touching their configuration.
+- Connects to any number of Paseo daemons, local or remote (e.g. over
+  Tailscale).
 - No daemon functionality of its own — it is purely a client.
 
 ## Requirements
@@ -48,33 +48,28 @@ app (the bundle ships a PWA manifest).
 ## Connecting remote daemons
 
 Browsers always send an `Origin` header on WebSocket upgrades (and JS cannot
-remove it); Paseo daemons reject cross-origin upgrades with 403. This server
-therefore listens on one extra loopback port per remote daemon and replays the
-upgrade **without** Origin — the daemon sees a clean, allowed handshake.
-
-Add a row to `remotes` in `config.json` and restart:
-
-```json
-{ "name": "gpu-box", "listen": 16769, "target": "100.64.0.7:6767" }
-```
-
-Then in the web UI: **Settings → Add host → Direct**, host `127.0.0.1`, port
-`16769`. (Host profiles live in the browser's localStorage — add once per
-browser.)
-
-### Alternative: daemon-side CORS whitelist
-
-If you'd rather skip forwarders and add hosts by their real addresses, teach
-each daemon to trust this client's origin in `~/.paseo/config.json`:
+remove it); Paseo daemons reject upgrades whose Origin is not trusted. To let
+this client reach a remote daemon directly, add the client's origin to that
+daemon's whitelist in `~/.paseo/config.json` **on the remote host**:
 
 ```json
 { "daemon": { "cors": { "allowedOrigins": ["https://app.paseo.sh", "http://127.0.0.1:11735"] } } }
 ```
 
-(Keep the default `https://app.paseo.sh` entry.) The change takes effect on
-write — then **Add host → Direct** with the daemon's real `host:6767`.
-Trade-off: one config line per daemon, and the whitelist must track the web
-client's port. The forwarder approach keeps all daemons untouched.
+Keep the default `https://app.paseo.sh` entry. The change takes effect on
+write — no daemon restart needed. Then in the web UI: **Settings → Add host →
+Direct**, with the daemon's real address, e.g. `100.64.0.7` port `6767`. Host
+profiles live in the browser's localStorage — add once per browser.
+
+`Origin: http://127.0.0.1:11735` is just a header declaring *which page*
+opened the connection (your browser's address bar), not a network source
+address — the daemon compares that string against its whitelist and does not
+care where the TCP connection came from. If you serve this client on a
+different port, add that origin instead.
+
+The daemon must of course be network-reachable: either listening on a
+non-loopback interface, or exposed on its Tailscale address via
+`tailscale serve`.
 
 ## Running as a background service
 
@@ -121,7 +116,7 @@ skill `.claude/skills/update-from-upstream/SKILL.md`.
 
 | Path | What it is |
 |------|------------|
-| `serve.mjs` | The entire server: static files + WS tunnels. Zero deps. |
+| `serve.mjs` | The entire server: static files + WS tunnel to the local daemon. Zero deps. |
 | `config.example.json` | Template; copy to `config.json` (git-ignored). |
 | `dist/` | Prebuilt official UI + KaTeX (Paseo v0.7.2 + `patches/`). |
 | `patches/` | The complete delta vs upstream, as a `git am`-able series. |

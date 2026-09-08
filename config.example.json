@@ -1,8 +1,5 @@
 {
   "host": "127.0.0.1",
   "port": 11735,
-  "local": "127.0.0.1:6767",
-  "remotes": [
-    { "name": "example-remote", "listen": 16767, "target": "100.x.y.z:6767" }
-  ]
+  "local": "127.0.0.1:6767"
 }
