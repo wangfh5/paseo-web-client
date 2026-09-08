@@ -68,13 +68,13 @@ If you'd rather skip forwarders and add hosts by their real addresses, teach
 each daemon to trust this client's origin in `~/.paseo/config.json`:
 
 ```json
-{ "cors": { "allowedOrigins": ["http://127.0.0.1:11735"] } }
+{ "daemon": { "cors": { "allowedOrigins": ["https://app.paseo.sh", "http://127.0.0.1:11735"] } } }
 ```
 
-Reload the daemon (`paseo daemon reload`) and then **Add host → Direct** with
-the daemon's real `host:6767`. Trade-off: one config line per daemon, and the
-whitelist must track the web client's port. The forwarder approach keeps all
-daemons untouched.
+(Keep the default `https://app.paseo.sh` entry.) The change takes effect on
+write — then **Add host → Direct** with the daemon's real `host:6767`.
+Trade-off: one config line per daemon, and the whitelist must track the web
+client's port. The forwarder approach keeps all daemons untouched.
 
 ## Running as a background service
 
