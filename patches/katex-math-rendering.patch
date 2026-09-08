@@ -1,7 +1,7 @@
-From 9f1ccfc0e0ebda8a8a74ad85d2b89348d5b86d54 Mon Sep 17 00:00:00 2001
+From 3dd1e6879c462389ce0aeba5b1fafd4c29c2ba6d Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 01:42:34 +0900
-Subject: [PATCH 1/2] Render markdown math via KaTeX with LaTeX delimiter
+Subject: [PATCH 1/3] Render markdown math via KaTeX with LaTeX delimiter
  support
 
 - Parse $...$, $$...$$ and LaTeX-standard \(...\), \[...\] via
@@ -385,10 +385,10 @@ index 3a408f1..bfde82c 100644
 2.39.5 (Apple Git-154)
 
 
-From 09d645ffffbc528a524f84020820270e69a9f882 Mon Sep 17 00:00:00 2001
+From 73cb4590bfe568a658975ca3018f33a6ba62f78d Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 10:15:42 +0800
-Subject: [PATCH 2/2] Fix KaTeX theme prop under unistyles v3 web withUnistyles
+Subject: [PATCH 2/3] Fix KaTeX theme prop under unistyles v3 web withUnistyles
 
 The web implementation of withUnistyles never passes theme as a prop;
 themed values must flow through the mappings callback. Pass theme via
@@ -427,6 +427,123 @@ index c7adee4..ab0381c 100644
 +// in KatexViewBase keeps a regression here non-fatal (inherited color) instead
 +// of taking down the whole app.
 +export const KatexView = withUnistyles(KatexViewBase, (theme: Theme) => ({ theme }));
+-- 
+2.39.5 (Apple Git-154)
+
+
+From b61e1184e6b951b3dd1caeeb8ef98e4be77b4a66 Mon Sep 17 00:00:00 2001
+From: Fohong Wang <wangfohong@126.com>
+Date: Tue, 8 Sep 2026 19:26:40 +0800
+Subject: [PATCH 3/3] Fix display math swallowed when \[...\] is not on a block
+ boundary
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+texmath only emits math_block for $$ on block boundaries; a paragraph-internal
+$$ falls back to math_inline_double, which no render rule knew — the library
+renders unknown token types as null, so the formula vanished from the output.
+
+Normalize \[...\] to a blank-line-delimited $$ block so it always parses as
+math_block, and add a math_inline_double render rule (display mode) as a
+safety net for $$ written inline by hand.
+---
+ .../app/src/components/markdown/renderer.tsx  |  9 +++++
+ .../app/src/utils/markdown-parser.test.ts     | 37 +++++++++++++++++++
+ packages/app/src/utils/markdown-parser.ts     |  8 +++-
+ 3 files changed, 53 insertions(+), 1 deletion(-)
+
+diff --git a/packages/app/src/components/markdown/renderer.tsx b/packages/app/src/components/markdown/renderer.tsx
+index 6a12f01..3a96e09 100644
+--- a/packages/app/src/components/markdown/renderer.tsx
++++ b/packages/app/src/components/markdown/renderer.tsx
+@@ -537,6 +537,15 @@ export const mathRenderRules: RenderRules = {
+     _parent: ASTNode[],
+     _styles: MarkdownStyles,
+   ) => <KatexView key={node.key} tex={node.content ?? ""} displayMode />,
++  // texmath emits math_inline_double for $$...$$ that is not on a block
++  // boundary (e.g. mid-paragraph). Without a rule the token renders as null
++  // and the formula vanishes; render it as display math instead.
++  math_inline_double: (
++    node: ASTNode,
++    _children: ReactNode[],
++    _parent: ASTNode[],
++    _styles: MarkdownStyles,
++  ) => <KatexView key={node.key} tex={node.content ?? ""} displayMode />,
+ };
+ 
+ export function createSharedMarkdownRules(): RenderRules {
+diff --git a/packages/app/src/utils/markdown-parser.test.ts b/packages/app/src/utils/markdown-parser.test.ts
+index 38783f9..7a9376a 100644
+--- a/packages/app/src/utils/markdown-parser.test.ts
++++ b/packages/app/src/utils/markdown-parser.test.ts
+@@ -73,3 +73,40 @@ describe("createMarkdownParser", () => {
+ function escapeHtml(value: string): string {
+   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
+ }
++
++describe("math delimiters", () => {
++  function tokenTypes(source: string): string[] {
++    const types: string[] = [];
++    for (const token of createMarkdownParser({ linkify: true }).parse(source, {})) {
++      if (token.children) {
++        types.push(...token.children.map((child) => child.type));
++      } else if (!["paragraph_open", "paragraph_close", "inline"].includes(token.type)) {
++        types.push(token.type);
++      }
++    }
++    return types;
++  }
++
++  it("parses \\[...\\] without surrounding blank lines as a math block", () => {
++    // Regression: normalized to an inline-position $$, texmath emits
++    // math_inline_double, which the renderers do not know — the formula
++    // renders as nothing. The block-form normalization keeps it a math_block.
++    expect(tokenTypes("Crossing 通过\n\\[\nR=1\n\\]\n定义一个交点。")).toEqual([
++      "text",
++      "math_block",
++      "text",
++    ]);
++  });
++
++  it("parses \\[...\\] mid-sentence as a math block", () => {
++    expect(tokenTypes("before \\[R=1\\] after")).toEqual(["text", "math_block", "text"]);
++  });
++
++  it("parses \\(...\\) as inline math", () => {
++    expect(tokenTypes("energy \\(E=mc^2\\) here")).toEqual(["text", "math_inline", "text"]);
++  });
++
++  it("leaves delimiters inside code fences alone", () => {
++    expect(tokenTypes("```\n\\[R=1\\]\n```")).toEqual(["fence"]);
++  });
++});
+diff --git a/packages/app/src/utils/markdown-parser.ts b/packages/app/src/utils/markdown-parser.ts
+index bfde82c..d2d4bf5 100644
+--- a/packages/app/src/utils/markdown-parser.ts
++++ b/packages/app/src/utils/markdown-parser.ts
+@@ -29,6 +29,10 @@ export function createMarkdownParser({ linkify }: { linkify: boolean }): Markdow
+ // Normalize the former to the latter before parsing, leaving fenced code
+ // blocks and inline code spans alone; an unclosed fence (mid-stream chunk)
+ // counts as code to the end of the source.
++//
++// \[...\] becomes a $$ block with its own blank lines: texmath only emits
++// math_block for $$ on block boundaries, and its paragraph-internal fallback
++// (math_inline_double) used to render as nothing, swallowing the formula.
+ export function normalizeLatexDelimiters(source: string): string {
+   return source
+     .split(/(```[\s\S]*?(?:```|$)|`[^`\n]*`)/g)
+@@ -36,7 +40,9 @@ export function normalizeLatexDelimiters(source: string): string {
+       if (index % 2 === 1) return part;
+       return part
+         .replace(/\\\(([\s\S]*?)\\\)/g, (_, math: string) => (math.trim() ? `$${math}$` : _))
+-        .replace(/\\\[([\s\S]*?)\\\]/g, (_, math: string) => (math.trim() ? `$$${math}$$` : _));
++        .replace(/\\\[([\s\S]*?)\\\]/g, (_, math: string) =>
++          math.trim() ? `\n\n$$\n${math.trim()}\n$$\n\n` : _,
++        );
+     })
+     .join("");
+ }
 -- 
 2.39.5 (Apple Git-154)
 
