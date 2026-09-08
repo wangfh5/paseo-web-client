@@ -1,0 +1,4 @@
+# config.json is local-only (contains your daemon addresses); copy from the example
+config.json
+node_modules/
+.DS_Store

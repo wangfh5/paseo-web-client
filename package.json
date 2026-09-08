@@ -1,0 +1,8 @@
+{
+  "name": "paseo-web-client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs"
+  }
+}
