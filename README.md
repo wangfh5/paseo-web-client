@@ -96,35 +96,43 @@ works too — it is a single long-lived `node serve.mjs` process.
 
 ## Updating to a new Paseo release
 
-The bundle is built from the official repo at a release tag, with the single
-patch series in `patches/` applied on top. Everything needed to rebuild is in
-this folder — no fork or long-lived checkout required:
+The bundle is built from the official repo at a release tag, with the patch
+series in `patches/` applied on top. There is no fork or long-lived checkout —
+rebuild in a throwaway clone, swap `dist/`, done.
 
-```bash
-git clone --depth 1 -b vX.Y.Z https://github.com/getpaseo/paseo.git /tmp/paseo-build
-cd /tmp/paseo-build
-git am /path/to/paseo-web-client/patches/katex-math-rendering.patch
-npm install --no-audit --no-fund && npm run build:app-deps
-(cd packages/app && EXPO_PUBLIC_LOCAL_DAEMON=127.0.0.1:11735 \
-  npx expo export --platform web --clear)
-rm -rf /path/to/paseo-web-client/dist
-cp -R packages/app/dist /path/to/paseo-web-client/dist
-cd / && rm -rf /tmp/paseo-build
-```
+**Do not treat any written-down command sequence as authoritative.** Upstream
+renames npm scripts, moves packages and changes build tooling between
+releases; commands pasted from an older release's notes will silently rot and
+mislead. Work from intent and confirm every command against the upstream tree
+at the tag you are building (root and `packages/app/package.json` scripts,
+upstream CI/docs):
 
-Gotchas (each cost us real time):
+1. Clone the tag and apply `patches/katex-math-rendering.patch` (`git am`; if
+   hunks fail, use `git am --3way` or rebase the series by hand and regenerate
+   it with `git format-patch`, committing the refreshed patch here).
+2. Install dependencies and build whatever workspace packages the app needs —
+   discover how at that tag (e.g. the root `build:app-deps` script at v0.8.0).
+3. Run the patch's own tests (near the patched files, e.g.
+   `packages/app/src/utils/markdown-parser.test.ts`).
+4. Export the web bundle from `packages/app` with Expo. Two invariants are
+   load-bearing, whatever the exact flags are at that tag:
+   - `EXPO_PUBLIC_LOCAL_DAEMON=127.0.0.1:11735` must be set for the **web**
+     build, so the baked default "local" host points at this client's tunnel
+     port instead of 6767 (whose Origin gate would reject the browser).
+     Never set it for a desktop build — it makes
+     `shouldStartBuiltInDaemon()` return false and the bundled daemon never
+     starts.
+   - Metro's cache must be cleared for the export (`--clear` at v0.8.0);
+     a warm cache silently reuses the old env value.
+5. Replace this repo's `dist/` with the exported `packages/app/dist`.
 
-- `EXPO_PUBLIC_LOCAL_DAEMON=127.0.0.1:11735` is **required** for the web build
-  (it bakes the default host pointing at the local tunnel) and `--clear` is
-  mandatory — Metro's cache ignores env changes.
-- Never set that variable when building the **desktop** app: it makes
-  `shouldStartBuiltInDaemon()` return false and the bundled daemon never
-  starts.
-- unistyles v3's web `withUnistyles` does not inject a `theme` prop; themed
-  values must flow through the mappings callback (already handled by the
-  patch).
+Then verify (checklist in `AGENTS.md`): service restarts, `GET /` → 200, the
+`/ws` handshake to the local daemon succeeds, and in a real or headless
+browser the workspace list renders and a session containing `$$…$$` shows
+`.katex` elements with no page errors. Bump the version reference above and
+commit `dist/` + README together.
 
-For agents working in this repo, the same workflow is codified as the local
+For agents working in this repo, the same guidance is codified as the local
 skill `.claude/skills/update-from-upstream/SKILL.md`.
 
 ## Repository layout

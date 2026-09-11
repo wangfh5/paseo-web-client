@@ -25,10 +25,12 @@ own lives in `patches/katex-math-rendering.patch`.
 
 ## Updating to a new Paseo release
 
-Use the local skill `.claude/skills/update-from-upstream/SKILL.md` — it has
-the exact command sequence and the verification steps. Do not improvise a
-different build path; every step in that skill exists because skipping it
-broke something before.
+Use the local skill `.claude/skills/update-from-upstream/SKILL.md` — it
+defines the goal, the load-bearing invariants and the verification steps. The
+invariants are non-negotiable (each exists because skipping it broke something
+before), but concrete build commands must be re-derived from the upstream tree
+at the target tag: upstream renames scripts and moves packages between
+releases, so command sequences written down for older releases will rot.
 
 ## Verifying changes
 

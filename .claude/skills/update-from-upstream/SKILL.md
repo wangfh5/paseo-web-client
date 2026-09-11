@@ -6,73 +6,54 @@ description: Rebuild this Paseo web client's dist bundle from a new upstream Pas
 # Update the web client to a new Paseo release
 
 The bundle in `dist/` = official `packages/app` web export at a release tag +
-`patches/katex-math-rendering.patch`. Everything is rebuilt in a throwaway
-clone; nothing long-lived exists outside this folder.
+`patches/katex-math-rendering.patch`. Rebuild in a throwaway clone
+(`/tmp/paseo-build`); nothing long-lived exists outside this folder.
 
-## Steps
+## Work from intent, not from a frozen script
 
-Run from anywhere; `CLIENT` = this folder's absolute path.
+Upstream renames npm scripts, moves packages and changes build tooling between
+releases. Any command sequence written down in the past — including earlier
+versions of this skill — may not apply to the tag you are building. Confirm
+each step against the upstream tree at the target tag (root and
+`packages/app/package.json` scripts, upstream CI/docs) instead of assuming.
+The concrete shape at v0.8.0 was `npm install && npm run build:app-deps`, then
+`npx expo export --platform web --clear` from `packages/app` — expect this to
+drift and re-derive it per release. On the author's machine, pass
+`--cache /tmp/npm-cache-paseo` to npm install (broken `~/.npm` permissions).
 
-1. Clone the target release and apply the patch series:
+## What must hold (the invariants — each one cost real time)
 
-   ```bash
-   rm -rf /tmp/paseo-build
-   git clone --depth 1 -b vX.Y.Z https://github.com/getpaseo/paseo.git /tmp/paseo-build
-   cd /tmp/paseo-build
-   git am "$CLIENT/patches/katex-math-rendering.patch"
-   ```
-
-   If `git am` fails, the upstream markdown pipeline changed — rebase the two
-   patch commits by hand, regenerate the series with
-   `git format-patch vX.Y.Z --stdout > "$CLIENT/patches/katex-math-rendering.patch"`,
-   and commit the updated patch here.
-
-2. Install and build the workspace packages the app imports:
-
-   ```bash
-   npm install --no-audit --no-fund --cache /tmp/npm-cache-paseo
-   npm run build:app-deps
-   ```
-
-   (`--cache` works around a broken `~/.npm` permissions situation on this
-   machine; drop it if yours is healthy.)
-
-3. Sanity-check the patch still passes its own tests:
-
-   ```bash
-   npm run test -w @getpaseo/app -- src/utils/markdown-parser.test.ts
-   ```
-
-4. Export the web bundle. Both flags are load-bearing:
-
-   ```bash
-   (cd packages/app && EXPO_PUBLIC_LOCAL_DAEMON=127.0.0.1:11735 \
-     npx expo export --platform web --clear)
-   ```
-
-   - Without `EXPO_PUBLIC_LOCAL_DAEMON` the default "local" host points at
-     port 6767 directly and dies on the daemon's Origin gate.
-   - Without `--clear`, Metro reuses its cache and silently bakes the **old**
-     env value.
-   - This override is for the web build only; never use it for a desktop
-     build (it disables the bundled daemon startup).
-
-5. Swap in the new bundle and clean up:
-
-   ```bash
-   rm -rf "$CLIENT/dist"
-   cp -R packages/app/dist "$CLIENT/dist"
-   cd / && rm -rf /tmp/paseo-build
-   ```
+1. The patch series is applied on top of the release tag. Try `git am`; if
+   hunks fail, use `git am --3way` (fetch the tag the series was based on) or
+   rebase by hand, then regenerate the series with
+   `git format-patch <tag> --stdout > patches/katex-math-rendering.patch` and
+   commit the refreshed patch here.
+2. The patch's own tests still pass. Find them near the patched files (e.g.
+   `packages/app/src/utils/markdown-parser.test.ts`) and run them with the
+   workspace's test runner.
+3. The web export bakes `EXPO_PUBLIC_LOCAL_DAEMON=127.0.0.1:11735`, so the
+   default "local" host points at this client's tunnel port, not the daemon's
+   6767 (whose Origin gate rejects browsers). Web builds only — never set it
+   for a desktop build; it makes `shouldStartBuiltInDaemon()` return false and
+   the bundled daemon never starts.
+4. Metro's cache is cleared for the export (`--clear` at v0.8.0). A warm cache
+   silently reuses the old env value.
+5. The result replaces this repo's `dist/` with the exported
+   `packages/app/dist`; the throwaway clone is deleted afterwards.
 
 ## Verify
 
-1. Restart the service: `launchctl kickstart -k gui/$(id -u)/dev.wangfh.paseo-web-client`
-   (or rerun `node serve.mjs`).
-2. `curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:11735/` → 200.
-3. Drive headless Chrome (`channel: "chrome"` via Playwright, or a real
-   browser) through: workspace list renders from the local daemon; open a
-   session known to contain LaTeX (e.g. one with `$$...$$` or `\(...\)`);
-   confirm `.katex` elements appear and no error boundary fires.
-4. Bump the version reference in `README.md` ("Paseo vX.Y.Z") and commit
-   `dist/` + README together.
+1. Restart the service (on the author's machine:
+   `launchctl kickstart -k gui/$(id -u)/dev.wangfh.paseo-web-client`;
+   elsewhere: restart whatever supervisor runs `serve.mjs`).
+2. `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:11735/` → 200.
+3. Local-daemon tunnel handshake:
+   `node -e 'const ws=new WebSocket("ws://127.0.0.1:11735/ws");ws.onopen=()=>process.exit(0);ws.onerror=()=>process.exit(1)'`
+4. In a real browser (headless Chrome via Playwright with `channel: "chrome"`
+   works): workspace list renders from the local daemon; a session containing
+   LaTeX (`$$…$$` or `\[…\]`) renders `.katex` elements; no pageerror crashes
+   the app. If no existing session has LaTeX, create a throwaway one
+   (`paseo run -d --provider <p> 'Reply with exactly: $$E=mc^2$$'`), verify,
+   then archive it.
+5. Bump the version reference in `README.md` ("Paseo vX.Y.Z") and commit
+   `dist/` + README (and the refreshed patch, if regenerated) together.
