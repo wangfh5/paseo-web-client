@@ -1,0 +1,12 @@
+[Unit]
+Description=Paseo web client
+After=network-online.target
+
+[Service]
+ExecStart=__NODE__ __DIR__/serve.mjs
+WorkingDirectory=__DIR__
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

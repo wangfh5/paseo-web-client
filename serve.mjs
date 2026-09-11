@@ -13,8 +13,9 @@ import { createServer } from "node:http";
 import { createConnection } from "node:net";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("./", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("./", import.meta.url));
 const DIST = join(ROOT, "dist");
 const config = JSON.parse(await readFile(join(ROOT, "config.json"), "utf8"));
 

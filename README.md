@@ -73,11 +73,26 @@ non-loopback interface, or exposed on its Tailscale address via
 
 ## Running as a background service
 
-Any supervisor works. On macOS (launchd), a LaunchAgent with
-`ProgramArguments: [/opt/homebrew/bin/node, .../serve.mjs]`, `RunAtLoad` and
-`KeepAlive` is enough; on Linux use a systemd user unit with
-`ExecStart=/usr/bin/node /path/to/serve.mjs`. See `AGENTS.md` for the author's
-own setup.
+Templates ship in `service/` — substitute the three placeholders and install:
+
+**macOS (launchd):**
+
+```bash
+sed -e "s|__NODE__|$(which node)|" -e "s|__DIR__|$PWD|" -e "s|__HOME__|$HOME|" \
+  service/com.paseo.web-client.plist > ~/Library/LaunchAgents/com.paseo.web-client.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.paseo.web-client.plist
+```
+
+**Linux (systemd user unit):**
+
+```bash
+sed -e "s|__NODE__|$(which node)|" -e "s|__DIR__|$PWD|" \
+  service/paseo-web-client.service > ~/.config/systemd/user/paseo-web-client.service
+systemctl --user enable --now paseo-web-client
+```
+
+Both restart the client on crash and start it at login. Any other supervisor
+works too — it is a single long-lived `node serve.mjs` process.
 
 ## Updating to a new Paseo release
 
@@ -120,6 +135,7 @@ skill `.claude/skills/update-from-upstream/SKILL.md`.
 | `config.example.json` | Template; copy to `config.json` (git-ignored). |
 | `dist/` | Prebuilt official UI + KaTeX (Paseo v0.8.0 + `patches/`). |
 | `patches/` | The complete delta vs upstream, as a `git am`-able series. |
+| `service/` | launchd / systemd templates for running as a background service. |
 | `.claude/skills/update-from-upstream/` | Local agent skill for rebuilds. |
 
 ## License & attribution
