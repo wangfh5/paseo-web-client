@@ -1,4 +1,4 @@
-From 3dd1e6879c462389ce0aeba5b1fafd4c29c2ba6d Mon Sep 17 00:00:00 2001
+From a691acf83777cb8b8377e9f4487f5e3672cc6098 Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 01:42:34 +0900
 Subject: [PATCH 1/3] Render markdown math via KaTeX with LaTeX delimiter
@@ -29,10 +29,10 @@ Subject: [PATCH 1/3] Render markdown math via KaTeX with LaTeX delimiter
  .../components/markdown/katex-view.web.tsx    | 49 +++++++++++++++++++
  .../app/src/components/markdown/renderer.tsx  | 29 +++++++++++
  packages/app/src/components/message.tsx       |  7 ++-
- packages/app/src/components/plan-card.tsx     |  2 +
+ packages/app/src/components/plan-card.tsx     |  3 +-
  .../app/src/types/markdown-it-texmath.d.ts    | 16 ++++++
  packages/app/src/utils/markdown-parser.ts     | 33 ++++++++++++-
- 11 files changed, 187 insertions(+), 3 deletions(-)
+ 11 files changed, 187 insertions(+), 4 deletions(-)
  create mode 100644 packages/app/src/components/markdown/katex-inline-fonts.css
  create mode 100644 packages/app/src/components/markdown/katex-view.tsx
  create mode 100644 packages/app/src/components/markdown/katex-view.web.tsx
@@ -50,10 +50,10 @@ index 5838c7d..5dca860 100644
 +  "ignorePatterns": ["*.lock", "**/*.gen.ts", "**/*.gen.tsx", "**/katex-inline-fonts.css"]
  }
 diff --git a/package-lock.json b/package-lock.json
-index a0eeb70..aa669fd 100644
+index 822e143..2155880 100644
 --- a/package-lock.json
 +++ b/package-lock.json
-@@ -26329,6 +26329,12 @@
+@@ -26246,6 +26246,12 @@
          "markdown-it": "bin/markdown-it.js"
        }
      },
@@ -66,7 +66,7 @@ index a0eeb70..aa669fd 100644
      "node_modules/markdown-it/node_modules/entities": {
        "version": "2.0.3",
        "resolved": "https://registry.npmjs.org/entities/-/entities-2.0.3.tgz",
-@@ -36363,8 +36369,10 @@
+@@ -36261,8 +36267,10 @@
          "fast-deep-equal": "^3.1.3",
          "htmlparser2": "^12.0.0",
          "i18next": "^26.3.0",
@@ -77,7 +77,7 @@ index a0eeb70..aa669fd 100644
          "mermaid": "^11.16.0",
          "mnemonic-id": "^3.2.7",
          "qrcode": "^1.5.4",
-@@ -37063,6 +37071,15 @@
+@@ -36962,6 +36970,15 @@
          "addons/*"
        ]
      },
@@ -93,7 +93,7 @@ index a0eeb70..aa669fd 100644
      "packages/app/node_modules/dom-serializer": {
        "version": "3.1.1",
        "resolved": "https://registry.npmjs.org/dom-serializer/-/dom-serializer-3.1.1.tgz",
-@@ -37217,6 +37234,22 @@
+@@ -37116,6 +37133,22 @@
          "node": ">=20.19.0"
        }
      },
@@ -117,7 +117,7 @@ index a0eeb70..aa669fd 100644
        "version": "4.20260625.0",
        "resolved": "https://registry.npmjs.org/miniflare/-/miniflare-4.20260625.0.tgz",
 diff --git a/packages/app/package.json b/packages/app/package.json
-index e184856..60aa8ef 100644
+index b2b68fb..430162b 100644
 --- a/packages/app/package.json
 +++ b/packages/app/package.json
 @@ -102,8 +102,10 @@
@@ -216,7 +216,7 @@ index 0000000..c7adee4
 +
 +export const KatexView = withUnistyles(KatexViewBase);
 diff --git a/packages/app/src/components/markdown/renderer.tsx b/packages/app/src/components/markdown/renderer.tsx
-index db51607..6a12f01 100644
+index fecd902..cfb9ee7 100644
 --- a/packages/app/src/components/markdown/renderer.tsx
 +++ b/packages/app/src/components/markdown/renderer.tsx
 @@ -24,6 +24,7 @@ import Markdown, {
@@ -227,7 +227,7 @@ index db51607..6a12f01 100644
  import { MarkdownParagraphView, MarkdownTextSpan } from "@/components/markdown-text";
  import { MarkdownTableCellText } from "@/components/markdown-text-selection";
  import { getMarkdownListMarker, getMarkdownListSpacing } from "@/utils/markdown-list";
-@@ -511,6 +512,33 @@ function getMarkdownLinkHref(node: ASTNode): string {
+@@ -492,6 +493,33 @@ function getMarkdownLinkHref(node: ASTNode): string {
    return typeof href === "string" ? href : "";
  }
  
@@ -261,7 +261,7 @@ index db51607..6a12f01 100644
  export function createSharedMarkdownRules(): RenderRules {
    return {
      text: (
-@@ -647,6 +675,7 @@ export function createSharedMarkdownRules(): RenderRules {
+@@ -628,6 +656,7 @@ export function createSharedMarkdownRules(): RenderRules {
          {node.content ?? ""}
        </MarkdownInheritedText>
      ),
@@ -270,12 +270,12 @@ index db51607..6a12f01 100644
        node: ASTNode,
        children: ReactNode[],
 diff --git a/packages/app/src/components/message.tsx b/packages/app/src/components/message.tsx
-index 9ca8eae..e0c6f38 100644
+index 4ae2ccd..0de39a5 100644
 --- a/packages/app/src/components/message.tsx
 +++ b/packages/app/src/components/message.tsx
-@@ -61,7 +61,11 @@ import Animated, {
+@@ -56,7 +56,11 @@ import Animated, {
+ } from "react-native-reanimated";
  import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
- import { CODE_SURFACE_DATASET } from "@/styles/code-surface";
  import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 -import { MarkdownRenderer, type MarkdownStyles } from "@/components/markdown/renderer";
 +import {
@@ -286,7 +286,7 @@ index 9ca8eae..e0c6f38 100644
  import type { TaskActivity, TodoEntry, UserMessageImageAttachment } from "@/types/stream";
  import type { AgentAttachment } from "@getpaseo/protocol/messages";
  import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
-@@ -1520,6 +1524,7 @@ export const AssistantMessage = memo(function AssistantMessage({
+@@ -1531,6 +1535,7 @@ export const AssistantMessage = memo(function AssistantMessage({
  
    const markdownRules = useMemo<RenderRules>(() => {
      return {
@@ -295,16 +295,19 @@ index 9ca8eae..e0c6f38 100644
          node: ASTNode,
          children: ReactNode[],
 diff --git a/packages/app/src/components/plan-card.tsx b/packages/app/src/components/plan-card.tsx
-index 2ac00f1..d164a87 100644
+index 52c7068..41463f2 100644
 --- a/packages/app/src/components/plan-card.tsx
 +++ b/packages/app/src/components/plan-card.tsx
-@@ -1,4 +1,5 @@
- import { useMemo, type ReactNode } from "react";
-+import { mathRenderRules } from "./markdown/renderer";
- import { Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
- import Markdown, { type ASTNode } from "react-native-markdown-display";
- import { StyleSheet, useUnistyles } from "react-native-unistyles";
-@@ -56,6 +57,7 @@ function MarkdownParagraph({
+@@ -10,7 +10,7 @@ import {
+ import { type ASTNode } from "react-native-markdown-display";
+ import { StyleSheet, withUnistyles } from "react-native-unistyles";
+ import { useTranslation } from "react-i18next";
+-import { MarkdownRenderer } from "@/components/markdown/renderer";
++import { MarkdownRenderer, mathRenderRules } from "@/components/markdown/renderer";
+ import { ChevronRight } from "lucide-react-native";
+ import { isWeb } from "@/constants/platform";
+ import type { Theme } from "@/styles/theme";
+@@ -66,6 +66,7 @@ function MarkdownParagraph({
  
  function createPlanMarkdownRules() {
    return {
@@ -382,10 +385,10 @@ index 3a408f1..bfde82c 100644
 +  return parser;
  }
 -- 
-2.39.5 (Apple Git-154)
+2.54.0 (Apple Git-157)
 
 
-From 73cb4590bfe568a658975ca3018f33a6ba62f78d Mon Sep 17 00:00:00 2001
+From 05acd9484a21ace266cad8a72391cf177820c24f Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 10:15:42 +0800
 Subject: [PATCH 2/3] Fix KaTeX theme prop under unistyles v3 web withUnistyles
@@ -428,10 +431,10 @@ index c7adee4..ab0381c 100644
 +// of taking down the whole app.
 +export const KatexView = withUnistyles(KatexViewBase, (theme: Theme) => ({ theme }));
 -- 
-2.39.5 (Apple Git-154)
+2.54.0 (Apple Git-157)
 
 
-From b61e1184e6b951b3dd1caeeb8ef98e4be77b4a66 Mon Sep 17 00:00:00 2001
+From ce077f57e4426bfbc579becf92b6d396f392918e Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 19:26:40 +0800
 Subject: [PATCH 3/3] Fix display math swallowed when \[...\] is not on a block
@@ -454,10 +457,10 @@ safety net for $$ written inline by hand.
  3 files changed, 53 insertions(+), 1 deletion(-)
 
 diff --git a/packages/app/src/components/markdown/renderer.tsx b/packages/app/src/components/markdown/renderer.tsx
-index 6a12f01..3a96e09 100644
+index cfb9ee7..c5076a1 100644
 --- a/packages/app/src/components/markdown/renderer.tsx
 +++ b/packages/app/src/components/markdown/renderer.tsx
-@@ -537,6 +537,15 @@ export const mathRenderRules: RenderRules = {
+@@ -518,6 +518,15 @@ export const mathRenderRules: RenderRules = {
      _parent: ASTNode[],
      _styles: MarkdownStyles,
    ) => <KatexView key={node.key} tex={node.content ?? ""} displayMode />,
@@ -545,5 +548,5 @@ index bfde82c..d2d4bf5 100644
      .join("");
  }
 -- 
-2.39.5 (Apple Git-154)
+2.54.0 (Apple Git-157)
 

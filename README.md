@@ -141,7 +141,7 @@ skill `.claude/skills/update-from-upstream/SKILL.md`.
 |------|------------|
 | `serve.mjs` | The entire server: static files + WS tunnel to the local daemon. Zero deps. |
 | `config.example.json` | Template; copy to `config.json` (git-ignored). |
-| `dist/` | Prebuilt official UI + KaTeX (Paseo v0.8.0 + `patches/`). |
+| `dist/` | Prebuilt official UI + KaTeX (Paseo v0.9.1 + `patches/`). |
 | `patches/` | The complete delta vs upstream, as a `git am`-able series. |
 | `service/` | launchd / systemd templates for running as a background service. |
 | `.claude/skills/update-from-upstream/` | Local agent skill for rebuilds. |
