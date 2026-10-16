@@ -1,7 +1,7 @@
-From a691acf83777cb8b8377e9f4487f5e3672cc6098 Mon Sep 17 00:00:00 2001
+From e2191e590439367a17ca95c34146808636c8ed04 Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 01:42:34 +0900
-Subject: [PATCH 1/3] Render markdown math via KaTeX with LaTeX delimiter
+Subject: [PATCH 1/4] Render markdown math via KaTeX with LaTeX delimiter
  support
 
 - Parse $...$, $$...$$ and LaTeX-standard \(...\), \[...\] via
@@ -22,8 +22,6 @@ Subject: [PATCH 1/3] Render markdown math via KaTeX with LaTeX delimiter
   and plan-card.tsx; unknown token types render as null otherwise.
 ---
  .oxfmtrc.json                                 |  2 +-
- package-lock.json                             | 33 +++++++++++++
- packages/app/package.json                     |  2 +
  .../markdown/katex-inline-fonts.css           |  3 ++
  .../src/components/markdown/katex-view.tsx    | 14 ++++++
  .../components/markdown/katex-view.web.tsx    | 49 +++++++++++++++++++
@@ -32,7 +30,7 @@ Subject: [PATCH 1/3] Render markdown math via KaTeX with LaTeX delimiter
  packages/app/src/components/plan-card.tsx     |  3 +-
  .../app/src/types/markdown-it-texmath.d.ts    | 16 ++++++
  packages/app/src/utils/markdown-parser.ts     | 33 ++++++++++++-
- 11 files changed, 187 insertions(+), 4 deletions(-)
+ 9 files changed, 152 insertions(+), 4 deletions(-)
  create mode 100644 packages/app/src/components/markdown/katex-inline-fonts.css
  create mode 100644 packages/app/src/components/markdown/katex-view.tsx
  create mode 100644 packages/app/src/components/markdown/katex-view.web.tsx
@@ -49,88 +47,6 @@ index 5838c7d..5dca860 100644
 -  "ignorePatterns": ["*.lock", "**/*.gen.ts", "**/*.gen.tsx"]
 +  "ignorePatterns": ["*.lock", "**/*.gen.ts", "**/*.gen.tsx", "**/katex-inline-fonts.css"]
  }
-diff --git a/package-lock.json b/package-lock.json
-index 822e143..2155880 100644
---- a/package-lock.json
-+++ b/package-lock.json
-@@ -26246,6 +26246,12 @@
-         "markdown-it": "bin/markdown-it.js"
-       }
-     },
-+    "node_modules/markdown-it-texmath": {
-+      "version": "1.0.0",
-+      "resolved": "https://registry.npmjs.org/markdown-it-texmath/-/markdown-it-texmath-1.0.0.tgz",
-+      "integrity": "sha512-4hhkiX8/gus+6e53PLCUmUrsa6ZWGgJW2XCW6O0ASvZUiezIK900ZicinTDtG3kAO2kon7oUA/ReWmpW2FByxg==",
-+      "license": "MIT"
-+    },
-     "node_modules/markdown-it/node_modules/entities": {
-       "version": "2.0.3",
-       "resolved": "https://registry.npmjs.org/entities/-/entities-2.0.3.tgz",
-@@ -36261,8 +36267,10 @@
-         "fast-deep-equal": "^3.1.3",
-         "htmlparser2": "^12.0.0",
-         "i18next": "^26.3.0",
-+        "katex": "^0.18.7",
-         "lucide-react-native": "^0.546.0",
-         "markdown-it": "^10.0.0",
-+        "markdown-it-texmath": "^1.0.0",
-         "mermaid": "^11.16.0",
-         "mnemonic-id": "^3.2.7",
-         "qrcode": "^1.5.4",
-@@ -36962,6 +36970,15 @@
-         "addons/*"
-       ]
-     },
-+    "packages/app/node_modules/commander": {
-+      "version": "15.0.0",
-+      "resolved": "https://registry.npmjs.org/commander/-/commander-15.0.0.tgz",
-+      "integrity": "sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==",
-+      "license": "MIT",
-+      "engines": {
-+        "node": ">=22.12.0"
-+      }
-+    },
-     "packages/app/node_modules/dom-serializer": {
-       "version": "3.1.1",
-       "resolved": "https://registry.npmjs.org/dom-serializer/-/dom-serializer-3.1.1.tgz",
-@@ -37116,6 +37133,22 @@
-         "node": ">=20.19.0"
-       }
-     },
-+    "packages/app/node_modules/katex": {
-+      "version": "0.18.7",
-+      "resolved": "https://registry.npmjs.org/katex/-/katex-0.18.7.tgz",
-+      "integrity": "sha512-h+UCwkZ+4Jz8WQ7MLGfj7UVFrRCizGb912fwF4luGdYsC5paYG1vx+jy+KRcC/XkpjGva/P7nAWuxNnPzRvzHw==",
-+      "funding": [
-+        "https://opencollective.com/katex",
-+        "https://github.com/sponsors/katex"
-+      ],
-+      "license": "MIT",
-+      "dependencies": {
-+        "commander": "^15.0.0"
-+      },
-+      "bin": {
-+        "katex": "cli.js"
-+      }
-+    },
-     "packages/app/node_modules/miniflare": {
-       "version": "4.20260625.0",
-       "resolved": "https://registry.npmjs.org/miniflare/-/miniflare-4.20260625.0.tgz",
-diff --git a/packages/app/package.json b/packages/app/package.json
-index b2b68fb..430162b 100644
---- a/packages/app/package.json
-+++ b/packages/app/package.json
-@@ -102,8 +102,10 @@
-     "fast-deep-equal": "^3.1.3",
-     "htmlparser2": "^12.0.0",
-     "i18next": "^26.3.0",
-+    "katex": "^0.18.7",
-     "lucide-react-native": "^0.546.0",
-     "markdown-it": "^10.0.0",
-+    "markdown-it-texmath": "^1.0.0",
-     "mermaid": "^11.16.0",
-     "mnemonic-id": "^3.2.7",
-     "qrcode": "^1.5.4",
 diff --git a/packages/app/src/components/markdown/katex-inline-fonts.css b/packages/app/src/components/markdown/katex-inline-fonts.css
 new file mode 100644
 index 0000000..c59f647
@@ -216,7 +132,7 @@ index 0000000..c7adee4
 +
 +export const KatexView = withUnistyles(KatexViewBase);
 diff --git a/packages/app/src/components/markdown/renderer.tsx b/packages/app/src/components/markdown/renderer.tsx
-index fecd902..cfb9ee7 100644
+index 83380ea..f516b09 100644
 --- a/packages/app/src/components/markdown/renderer.tsx
 +++ b/packages/app/src/components/markdown/renderer.tsx
 @@ -24,6 +24,7 @@ import Markdown, {
@@ -227,7 +143,7 @@ index fecd902..cfb9ee7 100644
  import { MarkdownParagraphView, MarkdownTextSpan } from "@/components/markdown-text";
  import { MarkdownTableCellText } from "@/components/markdown-text-selection";
  import { getMarkdownListMarker, getMarkdownListSpacing } from "@/utils/markdown-list";
-@@ -492,6 +493,33 @@ function getMarkdownLinkHref(node: ASTNode): string {
+@@ -502,6 +503,33 @@ function getMarkdownLinkHref(node: ASTNode): string {
    return typeof href === "string" ? href : "";
  }
  
@@ -261,7 +177,7 @@ index fecd902..cfb9ee7 100644
  export function createSharedMarkdownRules(): RenderRules {
    return {
      text: (
-@@ -628,6 +656,7 @@ export function createSharedMarkdownRules(): RenderRules {
+@@ -638,6 +666,7 @@ export function createSharedMarkdownRules(): RenderRules {
          {node.content ?? ""}
        </MarkdownInheritedText>
      ),
@@ -270,10 +186,10 @@ index fecd902..cfb9ee7 100644
        node: ASTNode,
        children: ReactNode[],
 diff --git a/packages/app/src/components/message.tsx b/packages/app/src/components/message.tsx
-index 4ae2ccd..0de39a5 100644
+index 583585b..e2570c4 100644
 --- a/packages/app/src/components/message.tsx
 +++ b/packages/app/src/components/message.tsx
-@@ -56,7 +56,11 @@ import Animated, {
+@@ -57,7 +57,11 @@ import Animated, {
  } from "react-native-reanimated";
  import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
  import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
@@ -286,7 +202,7 @@ index 4ae2ccd..0de39a5 100644
  import type { TaskActivity, TodoEntry, UserMessageImageAttachment } from "@/types/stream";
  import type { AgentAttachment } from "@getpaseo/protocol/messages";
  import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
-@@ -1531,6 +1535,7 @@ export const AssistantMessage = memo(function AssistantMessage({
+@@ -1530,6 +1534,7 @@ export const AssistantMessage = memo(function AssistantMessage({
  
    const markdownRules = useMemo<RenderRules>(() => {
      return {
@@ -388,10 +304,10 @@ index 3a408f1..bfde82c 100644
 2.54.0 (Apple Git-157)
 
 
-From 05acd9484a21ace266cad8a72391cf177820c24f Mon Sep 17 00:00:00 2001
+From 0a2b015f4d8a7500620114e1e4b9a817a34b020f Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 10:15:42 +0800
-Subject: [PATCH 2/3] Fix KaTeX theme prop under unistyles v3 web withUnistyles
+Subject: [PATCH 2/4] Fix KaTeX theme prop under unistyles v3 web withUnistyles
 
 The web implementation of withUnistyles never passes theme as a prop;
 themed values must flow through the mappings callback. Pass theme via
@@ -434,10 +350,10 @@ index c7adee4..ab0381c 100644
 2.54.0 (Apple Git-157)
 
 
-From ce077f57e4426bfbc579becf92b6d396f392918e Mon Sep 17 00:00:00 2001
+From c052e12e9c56361205db689fd64a45cd6c86d393 Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 8 Sep 2026 19:26:40 +0800
-Subject: [PATCH 3/3] Fix display math swallowed when \[...\] is not on a block
+Subject: [PATCH 3/4] Fix display math swallowed when \[...\] is not on a block
  boundary
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -457,10 +373,10 @@ safety net for $$ written inline by hand.
  3 files changed, 53 insertions(+), 1 deletion(-)
 
 diff --git a/packages/app/src/components/markdown/renderer.tsx b/packages/app/src/components/markdown/renderer.tsx
-index cfb9ee7..c5076a1 100644
+index f516b09..bcdb6e5 100644
 --- a/packages/app/src/components/markdown/renderer.tsx
 +++ b/packages/app/src/components/markdown/renderer.tsx
-@@ -518,6 +518,15 @@ export const mathRenderRules: RenderRules = {
+@@ -528,6 +528,15 @@ export const mathRenderRules: RenderRules = {
      _parent: ASTNode[],
      _styles: MarkdownStyles,
    ) => <KatexView key={node.key} tex={node.content ?? ""} displayMode />,
@@ -547,6 +463,386 @@ index bfde82c..d2d4bf5 100644
      })
      .join("");
  }
+-- 
+2.54.0 (Apple Git-157)
+
+
+From db6aa907068b262a56a7b79c1e0f4ff60f111da0 Mon Sep 17 00:00:00 2001
+From: Fohong Wang <wangfohong@126.com>
+Date: Fri, 16 Oct 2026 21:24:21 +0800
+Subject: [PATCH 4/4] Update math rendering dependencies for Paseo v0.11.4
+
+---
+ package-lock.json         | 114 +++++++++++++++++++++-----------------
+ packages/app/package.json |   2 +
+ 2 files changed, 64 insertions(+), 52 deletions(-)
+
+diff --git a/package-lock.json b/package-lock.json
+index 0eaaa2e..31bdffb 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -11421,8 +11421,7 @@
+       "optional": true,
+       "os": [
+         "android"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-android-arm64": {
+       "version": "4.59.0",
+@@ -11435,8 +11434,7 @@
+       "optional": true,
+       "os": [
+         "android"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-darwin-arm64": {
+       "version": "4.59.0",
+@@ -11449,8 +11447,7 @@
+       "optional": true,
+       "os": [
+         "darwin"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-darwin-x64": {
+       "version": "4.59.0",
+@@ -11463,8 +11460,7 @@
+       "optional": true,
+       "os": [
+         "darwin"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-freebsd-arm64": {
+       "version": "4.59.0",
+@@ -11477,8 +11473,7 @@
+       "optional": true,
+       "os": [
+         "freebsd"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-freebsd-x64": {
+       "version": "4.59.0",
+@@ -11491,8 +11486,7 @@
+       "optional": true,
+       "os": [
+         "freebsd"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-arm-gnueabihf": {
+       "version": "4.59.0",
+@@ -11505,8 +11499,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-arm-musleabihf": {
+       "version": "4.59.0",
+@@ -11519,8 +11512,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-arm64-gnu": {
+       "version": "4.59.0",
+@@ -11533,8 +11525,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-arm64-musl": {
+       "version": "4.59.0",
+@@ -11547,8 +11538,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-loong64-gnu": {
+       "version": "4.59.0",
+@@ -11561,8 +11551,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-loong64-musl": {
+       "version": "4.59.0",
+@@ -11575,8 +11564,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-ppc64-gnu": {
+       "version": "4.59.0",
+@@ -11589,8 +11577,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-ppc64-musl": {
+       "version": "4.59.0",
+@@ -11603,8 +11590,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-riscv64-gnu": {
+       "version": "4.59.0",
+@@ -11617,8 +11603,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-riscv64-musl": {
+       "version": "4.59.0",
+@@ -11631,8 +11616,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-s390x-gnu": {
+       "version": "4.59.0",
+@@ -11645,8 +11629,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-x64-gnu": {
+       "version": "4.59.0",
+@@ -11659,8 +11642,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-linux-x64-musl": {
+       "version": "4.59.0",
+@@ -11673,8 +11655,7 @@
+       "optional": true,
+       "os": [
+         "linux"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-openbsd-x64": {
+       "version": "4.59.0",
+@@ -11687,8 +11668,7 @@
+       "optional": true,
+       "os": [
+         "openbsd"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-openharmony-arm64": {
+       "version": "4.59.0",
+@@ -11701,8 +11681,7 @@
+       "optional": true,
+       "os": [
+         "openharmony"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-win32-arm64-msvc": {
+       "version": "4.59.0",
+@@ -11715,8 +11694,7 @@
+       "optional": true,
+       "os": [
+         "win32"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-win32-ia32-msvc": {
+       "version": "4.59.0",
+@@ -11729,8 +11707,7 @@
+       "optional": true,
+       "os": [
+         "win32"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-win32-x64-gnu": {
+       "version": "4.59.0",
+@@ -11743,8 +11720,7 @@
+       "optional": true,
+       "os": [
+         "win32"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rollup/rollup-win32-x64-msvc": {
+       "version": "4.59.0",
+@@ -11757,8 +11733,7 @@
+       "optional": true,
+       "os": [
+         "win32"
+-      ],
+-      "peer": true
++      ]
+     },
+     "node_modules/@rtsao/scc": {
+       "version": "1.1.0",
+@@ -19354,7 +19329,6 @@
+       "dev": true,
+       "license": "BSD-3-Clause",
+       "optional": true,
+-      "peer": true,
+       "engines": {
+         "node": ">=0.10.0"
+       }
+@@ -26401,6 +26375,12 @@
+         "markdown-it": "bin/markdown-it.js"
+       }
+     },
++    "node_modules/markdown-it-texmath": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/markdown-it-texmath/-/markdown-it-texmath-1.0.0.tgz",
++      "integrity": "sha512-4hhkiX8/gus+6e53PLCUmUrsa6ZWGgJW2XCW6O0ASvZUiezIK900ZicinTDtG3kAO2kon7oUA/ReWmpW2FByxg==",
++      "license": "MIT"
++    },
+     "node_modules/markdown-it/node_modules/entities": {
+       "version": "2.0.3",
+       "resolved": "https://registry.npmjs.org/entities/-/entities-2.0.3.tgz",
+@@ -36478,8 +36458,10 @@
+         "fast-deep-equal": "^3.1.3",
+         "htmlparser2": "^12.0.0",
+         "i18next": "^26.3.0",
++        "katex": "^0.18.7",
+         "lucide-react-native": "^1.50.0",
+         "markdown-it": "^10.0.0",
++        "markdown-it-texmath": "^1.0.0",
+         "mermaid": "^11.16.0",
+         "mnemonic-id": "^3.2.7",
+         "qrcode": "^1.5.4",
+@@ -37179,6 +37161,15 @@
+         "addons/*"
+       ]
+     },
++    "packages/app/node_modules/commander": {
++      "version": "15.0.0",
++      "resolved": "https://registry.npmjs.org/commander/-/commander-15.0.0.tgz",
++      "integrity": "sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=22.12.0"
++      }
++    },
+     "packages/app/node_modules/dom-serializer": {
+       "version": "3.1.1",
+       "resolved": "https://registry.npmjs.org/dom-serializer/-/dom-serializer-3.1.1.tgz",
+@@ -37333,6 +37324,22 @@
+         "node": ">=20.19.0"
+       }
+     },
++    "packages/app/node_modules/katex": {
++      "version": "0.18.10",
++      "resolved": "https://registry.npmjs.org/katex/-/katex-0.18.10.tgz",
++      "integrity": "sha512-/B6p9eY9DX7aHBfpkHdpirDTZ5QH9xTwL9y837PWuzuv41O5jFdqNQwVQEQsimY0/iVNkwBY4+4hMfhQ7d4Dbw==",
++      "funding": [
++        "https://opencollective.com/katex",
++        "https://github.com/sponsors/katex"
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "commander": "^15.0.0"
++      },
++      "bin": {
++        "katex": "cli.js"
++      }
++    },
+     "packages/app/node_modules/lucide-react-native": {
+       "version": "1.50.0",
+       "resolved": "https://registry.npmjs.org/lucide-react-native/-/lucide-react-native-1.50.0.tgz",
+@@ -41515,6 +41522,7 @@
+       "resolved": "https://registry.npmjs.org/react/-/react-19.2.6.tgz",
+       "integrity": "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q==",
+       "license": "MIT",
++      "peer": true,
+       "engines": {
+         "node": ">=0.10.0"
+       }
+@@ -41524,6 +41532,7 @@
+       "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.6.tgz",
+       "integrity": "sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "scheduler": "^0.27.0"
+       },
+@@ -41548,7 +41557,8 @@
+       "version": "0.27.0",
+       "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.27.0.tgz",
+       "integrity": "sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==",
+-      "license": "MIT"
++      "license": "MIT",
++      "peer": true
+     },
+     "packages/website/node_modules/undici": {
+       "version": "7.28.0",
+diff --git a/packages/app/package.json b/packages/app/package.json
+index 77678cd..4894352 100644
+--- a/packages/app/package.json
++++ b/packages/app/package.json
+@@ -102,8 +102,10 @@
+     "fast-deep-equal": "^3.1.3",
+     "htmlparser2": "^12.0.0",
+     "i18next": "^26.3.0",
++    "katex": "^0.18.7",
+     "lucide-react-native": "^1.50.0",
+     "markdown-it": "^10.0.0",
++    "markdown-it-texmath": "^1.0.0",
+     "mermaid": "^11.16.0",
+     "mnemonic-id": "^3.2.7",
+     "qrcode": "^1.5.4",
 -- 
 2.54.0 (Apple Git-157)
 

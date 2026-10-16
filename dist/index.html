@@ -70,6 +70,15 @@
         -webkit-app-region: no-drag !important;
       }
 
+      /* Electron does not clip app-region rectangles to scroll viewports.
+         Content-only viewports emit no window regions, including from their
+         controls. Visible controls here use normal DOM hit testing.
+         Use initial: Blink parses the explicit value none as no-drag. */
+      [data-window-content],
+      [data-window-content] * {
+        -webkit-app-region: initial !important;
+      }
+
       /* Suppress the browser's default focus outline — it appears on mouse
          clicks and looks out of place against our themed surfaces. Keep a
          themed ring for keyboard users via :focus-visible. */
@@ -85,6 +94,6 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-  <script src="/_expo/static/js/web/index-397855d5aac406d40eb5906bff3a3076.js" defer></script>
+  <script src="/_expo/static/js/web/index-47a9a432d6f60f6879051dcc6a307f21.js" defer></script>
 </body>
 </html>
