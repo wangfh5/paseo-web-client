@@ -1,7 +1,7 @@
-From 21edec2a03aa31e6cc321c5f30c3d349f219097f Mon Sep 17 00:00:00 2001
+From 8e3687b061520b743ba98856a9b1b4a31cfeb30c Mon Sep 17 00:00:00 2001
 From: Fohong Wang <wangfohong@126.com>
 Date: Tue, 27 Oct 2026 11:37:25 +0800
-Subject: [PATCH] Enable KaTeX math on the web markdown renderer
+Subject: [PATCH 1/2] Enable KaTeX math on the web markdown renderer
 
 v0.13.2 replaced react-native-markdown-display with
 react-native-enriched-markdown, which already renders $ / $$ via KaTeX
@@ -23,7 +23,7 @@ font override off KaTeX / MathML faces.
  create mode 100644 packages/app/src/components/markdown/latex-delimiters.ts
 
 diff --git a/packages/app/package.json b/packages/app/package.json
-index e0c5e4f..dad8476 100644
+index 42294ae..a63c3ec 100644
 --- a/packages/app/package.json
 +++ b/packages/app/package.json
 @@ -106,6 +106,7 @@
@@ -168,10 +168,10 @@ index 0000000..e922ed9
 +  return from;
 +}
 diff --git a/packages/app/src/components/markdown/renderer.test.ts b/packages/app/src/components/markdown/renderer.test.ts
-index 83b6f22..969a30a 100644
+index bb5679f..8fd1afb 100644
 --- a/packages/app/src/components/markdown/renderer.test.ts
 +++ b/packages/app/src/components/markdown/renderer.test.ts
-@@ -258,6 +258,36 @@ describe("bare URL sentence punctuation", () => {
+@@ -287,6 +287,36 @@ describe("bare URL sentence punctuation", () => {
    );
  });
  
@@ -209,7 +209,7 @@ index 83b6f22..969a30a 100644
    const source = "`src/app/[id].tsx` and `src/a+b.ts` and `README.md` and `/tmp/file.ts`";
    const withoutWorkspace = prepareMarkdownSource(source).linkRecognition.inlineCode;
 diff --git a/packages/app/src/components/markdown/renderer.tsx b/packages/app/src/components/markdown/renderer.tsx
-index 6d79beb..9172773 100644
+index 8e51495..45f8996 100644
 --- a/packages/app/src/components/markdown/renderer.tsx
 +++ b/packages/app/src/components/markdown/renderer.tsx
 @@ -20,7 +20,9 @@ import { useMarkdownSource, type MarkdownImageContext } from "./images";
@@ -222,9 +222,9 @@ index 6d79beb..9172773 100644
 +const MD4C_FLAGS = { latexMath: true, hardSoftBreaks: true, admonitions: true };
  
  // Reading the breakpoint here makes Unistyles restyle the text when the layout crosses it.
- const markdownStyle = (compact: boolean) => (theme: Theme, rt: { breakpoint?: string }) =>
+ const markdownStyle =
 diff --git a/packages/app/src/components/markdown/source.ts b/packages/app/src/components/markdown/source.ts
-index 9977ccf..52cdd4a 100644
+index 5c82088..b643ebd 100644
 --- a/packages/app/src/components/markdown/source.ts
 +++ b/packages/app/src/components/markdown/source.ts
 @@ -1,6 +1,7 @@
@@ -235,7 +235,7 @@ index 9977ccf..52cdd4a 100644
  import { gfmTable } from "micromark-extension-gfm-table";
  import { gfmTableFromMarkdown } from "mdast-util-gfm-table";
  import type { AssistantFileLinkSource } from "@/assistant-file-links";
-@@ -108,7 +109,7 @@ export function prepareMarkdownSource(
+@@ -114,7 +115,7 @@ export function prepareMarkdownSource(
    workspaceRoot?: string,
    options: { supportsSvg?: boolean } = {},
  ) {
@@ -245,15 +245,59 @@ index 9977ccf..52cdd4a 100644
    let tree: Root | undefined;
    const getTree = () =>
 diff --git a/packages/app/src/components/markdown/styles.ts b/packages/app/src/components/markdown/styles.ts
-index faf388a..6175896 100644
+index a06104d..f4a87ca 100644
 --- a/packages/app/src/components/markdown/styles.ts
 +++ b/packages/app/src/components/markdown/styles.ts
-@@ -99,6 +99,8 @@ export function createMarkdownStyles(
+@@ -103,6 +103,8 @@ export function createMarkdownStyles(
        inlineImage: { size: paragraph.lineHeight },
        image: { ...block, height: 320, resizeMode: "contain", borderRadius: 8 },
        thematicBreak: { ...block, color: theme.colors.border, height: 1 },
 +      math: { ...block, fontSize, color: theme.colors.foreground },
 +      inlineMath: { color: theme.colors.foreground, fontSize },
+     },
+   };
+ }
+-- 
+2.54.0 (Apple Git-157)
+
+
+From ea29c95cb4043d78506e0be061ac58ff856bae8b Mon Sep 17 00:00:00 2001
+From: Fohong Wang <wangfohong@126.com>
+Date: Fri, 30 Oct 2026 13:22:22 +0800
+Subject: [PATCH 2/2] =?UTF-8?q?=F0=9F=90=9B=20Fix=20KaTeX=20patch=20type?=
+ =?UTF-8?q?=20compatibility?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ packages/app/src/components/markdown/renderer.test.ts | 2 +-
+ packages/app/src/components/markdown/styles.ts        | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/packages/app/src/components/markdown/renderer.test.ts b/packages/app/src/components/markdown/renderer.test.ts
+index 8fd1afb..7eae160 100644
+--- a/packages/app/src/components/markdown/renderer.test.ts
++++ b/packages/app/src/components/markdown/renderer.test.ts
+@@ -289,7 +289,7 @@ describe("bare URL sentence punctuation", () => {
+ 
+ describe("latex math", () => {
+   function collectTypes(node: ASTNode): string[] {
+-    const types = [node.type];
++    const types: string[] = [node.type];
+     node.children?.forEach((child) => types.push(...collectTypes(child)));
+     return types;
+   }
+diff --git a/packages/app/src/components/markdown/styles.ts b/packages/app/src/components/markdown/styles.ts
+index f4a87ca..ff657d7 100644
+--- a/packages/app/src/components/markdown/styles.ts
++++ b/packages/app/src/components/markdown/styles.ts
+@@ -104,7 +104,7 @@ export function createMarkdownStyles(
+       image: { ...block, height: 320, resizeMode: "contain", borderRadius: 8 },
+       thematicBreak: { ...block, color: theme.colors.border, height: 1 },
+       math: { ...block, fontSize, color: theme.colors.foreground },
+-      inlineMath: { color: theme.colors.foreground, fontSize },
++      inlineMath: { color: theme.colors.foreground },
      },
    };
  }
