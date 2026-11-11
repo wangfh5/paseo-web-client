@@ -46,6 +46,12 @@ drift and re-derive it per release. On the author's machine, pass
 1. Restart the service (on the author's machine:
    `launchctl kickstart -k gui/$(id -u)/dev.wangfh.paseo-web-client`;
    elsewhere: restart whatever supervisor runs `serve.mjs`).
+   From a non-interactive SSH session, `launchctl kickstart` on the GUI
+   domain can fail ("Could not find service ... domain for user gui")
+   while silently leaving the old process running — verify with
+   `lsof -nP -iTCP:11735 -sTCP:LISTEN` that the listening PID actually
+   changed. If it did not, `kill <old-pid>` and let launchd's KeepAlive
+   respawn it, then re-check HTTP/WS.
 2. `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:11735/` → 200.
 3. Local-daemon tunnel handshake:
    `node -e 'const ws=new WebSocket("ws://127.0.0.1:11735/ws");ws.onopen=()=>process.exit(0);ws.onerror=()=>process.exit(1)'`
